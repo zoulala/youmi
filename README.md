@@ -1,5 +1,5 @@
 # youmi
-智能问答系统demo,测试专用
+智能问答系统demo, word2vec语义匹配
 
 # 数据
 链接：https://pan.baidu.com/s/1KYpyC42pi8xDT19sH02EZw 密码：g22n
