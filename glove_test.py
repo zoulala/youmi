@@ -31,7 +31,7 @@ if __name__=="__main__":
     from gensim.test.utils import get_tmpfile
     from gensim.scripts.glove2word2vec import glove2word2vec
 
-    glove_file = 'data/wiki.zh.jian.word_200v.txt'
+    glove_file = 'data/wiki.zh.jian.word_200v_glove.txt'
     word2vec_file = get_tmpfile("word2vec.format.vec")
     glove2word2vec(glove_file, word2vec_file)
     model_glove = KeyedVectors.load_word2vec_format(word2vec_file)
