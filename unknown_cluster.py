@@ -1,7 +1,9 @@
+
 import numpy as np
+import datetime
 from numpy import dot
 from gensim import matutils
-from read_utils import get_excel_libs, load_word2vec_model
+from read_utils import get_excel_libs, load_word2vec_model,MysqlThoth2
 from  model_build import get_vec_sen, get_vec_sen_list
 
 
@@ -14,6 +16,43 @@ def get_similar_index(vec1, vec_list, topn=10):  # 默认输出10个最相似的
     except:
         print(' calculate dot error ! ')
 
+def insert_new_question(mysql_obj, question, robotId, ):
+    '''插入新问题'''
+    # # 插入问题表
+    sql_insert_q = "INSERT INTO tbl_unknown_questions(id,tenantId,question, robotId) VALUES (NULL, '%d', '%s', '%d')" % (
+        1008, question, robotId)
+    new_id = mysql_obj.insert_into_mysql(sql_insert_q)
+
+    # 插入日期表
+    time_a = datetime.datetime.now().strftime("%Y-%m-%d")
+    sql_insert_d = "INSERT INTO tbl_unknown_dates(id,questionId, date, count) VALUES (NULL, '%d', '%s', '%d')" % (
+        new_id, time_a, 1)
+    mysql_obj.insert_into_mysql(sql_insert_d)
+
+def update_quesiton_count(mysql_obj, questionId):
+
+    sql_select = "SELECT * FROM tbl_unknown_dates WHERE questionId=%d and to_days(date) = to_days(now());" % questionId
+    results = mysql_obj.select_from_mysql(sql_select)
+    if results:
+        sql_update = "UPDATE tbl_unknown_dates SET count=count+1 WHERE questionId=%d and to_days(date) = to_days(now());" % questionId
+        mysql_obj.update_to_mysql(sql_update)
+    else:
+        # 插入日期表
+        time_a = datetime.datetime.now().strftime("%Y-%m-%d")
+        sql_insert_d = "INSERT INTO tbl_unknown_dates(id,questionId, date, count) VALUES (NULL, '%d', '%s', '%d')" % (
+            questionId, time_a, 1)
+        mysql_obj.insert_into_mysql(sql_insert_d)
+
+
+def load_old_qustions(mysql_obj, robotId):
+        '''读取已有未知问题列表'''
+        sql_select = "SELECT * FROM tbl_unknown_questions \
+               WHERE robotId = %d " % (robotId)
+        results = mysql_obj.select_from_mysql(sql_select)
+        questionList = [(row[0], row[2]) for row in results]
+        print(questionList)
+        return questionList
+
 
 
 if __name__=="__main__":
@@ -24,42 +63,40 @@ if __name__=="__main__":
     models = [model_zh, model_en, model_cha]
     model_size = 200
 
-    # 获取某一类问题集合
-    sen_dict = {'我的账号被盗了怎么办':1,'号被别人盗了如何解决':1,'我的号被别人盗了':1,'账号怎么被盗了':3}
-    sen_list = ['我的账号被盗了怎么办','号被别人盗了如何解决','我的号被别人盗了','账号怎么被盗了','账号怎么被盗了','账号怎么被盗了']  # 读取某一类的问题
-    # 转换为语义向量
-    vec_list = get_vec_sen_list(sen_list, models, model_size)
-    # 计算向量中心
-    vec_center = np.sum(vec_list,axis=0)/len(vec_list)
+    mysql_obj = MysqlThoth2()
 
-    # 新问题
-    query = '账号怎么被盗了'  # input('you:')
-    print('新问题：',query)
-    query_vec = get_vec_sen(query, models, model_size)
+    # #创建表
+    # sql_create1 = "create table if not exists tbl_unknown_questions(id int(1) unsigned not null auto_increment primary key,tenantId int(1),question text(100),robotId int(1));"
+    # sql_create2 = "create table if not exists tbl_unknown_dates(id int(1) unsigned not null auto_increment primary key,questionId int(1),date date,count int(1));"
+    # mysql_obj.create_tbl(sql_create1)
+    # mysql_obj.create_tbl(sql_create2)
 
-    # 计算新问题与所有问题的相似度
-    for vec in vec_list:
-        print('-相似度- ',np.dot(query_vec, vec), '-距离-',np.sqrt(np.sum(np.square(query_vec - vec))))
+    while True:
+        robotId = 30
+        question = input('unknow:')
+        # question = '畅游地址是多少'
 
-    # 计算新问题与类中心的相似度
-    score = np.dot(query_vec, vec_center)
-    print('\n与类中心的相似度:',score)
+        questionList = load_old_qustions(mysql_obj, robotId)
+        print('questionList:',questionList)
 
-    # 计算新问题与类中心的距离
-    dist = np.sqrt(np.sum(np.square(query_vec - vec_center)))
-    print('\n与类中心的距离:',dist)
+        # 计算question归属类
+        sen_list = [q for _,q in questionList]
+        ids = [i_d for i_d, _ in questionList]
+        # 转换为语义向量
+        query_vec = get_vec_sen(question, models, model_size)
+        vec_list = get_vec_sen_list(sen_list, models, model_size)
 
-    # 更新类
-    if score>0.65 and dist<0.6:
-        sen_list.append(query)
-        print('更新类：',sen_list)
+        topn_tuple = get_similar_index(query_vec, vec_list, 10)  # 默认输出10个最相似的标题 的（索引号,相似度）列表
+        print(topn_tuple)
+        if topn_tuple[0][1] > 0.8:
+            # 更新问题次数
+            index = topn_tuple[0][0]
+            q_id = ids[index]
+            update_quesiton_count(mysql_obj, q_id)
+        else:
+            # 插入新问题
+            insert_new_question(mysql_obj, question, robotId)
 
-    # 输出最能代表类的问题
-    vec_list = get_vec_sen_list(sen_list, models, model_size)
-    new_center = np.sum(vec_list,axis=0)/len(vec_list)
 
-    topn_tuple = get_similar_index(new_center, vec_list, 10)
-    topn_responses = [(sen_list[index], score) for index, score in topn_tuple]
-    print('与类中心score排序: ',topn_responses)
 
 
