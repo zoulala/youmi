@@ -1,10 +1,11 @@
 '''
 输入一个问句，从候选库中找出与之相似的问题。
 '''
-from numpy import dot
 from gensim import matutils
-from read_utils import get_excel_libs, load_word2vec_model
-from  model_build import get_vec_sen, get_vec_sen_list
+from numpy import dot
+
+from libs.model_build import get_vec_sen, get_vec_sen_list
+from libs.read_utils import get_libs, load_word2vec_model
 
 
 def get_similar_index(vec1, vec_list, topn=10):  # 默认输出10个最相似的标题 的（索引号,相似度）列表
@@ -24,7 +25,7 @@ if __name__=="__main__":
     models = [model_zh, model_en, model_cha]
     model_size = 200
 
-    responses = get_excel_libs('data/tianlong_libs.xlsx')
+    responses = get_libs('data/tianlong_libs.xlsx')
     responses_vec_list = get_vec_sen_list(responses, models, model_size)
     while True:
         query = input('you:')

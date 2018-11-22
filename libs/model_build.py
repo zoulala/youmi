@@ -72,13 +72,13 @@ def get_vec_sen(sentence, models, size):
                         break
             vector += vector_n  # preprocessing.scale(vector_n)  # 标准化
         else:
-            if w in models[0]:
+            if w in models[0]:  # 中文字向量
                 vector += preprocessing.scale(models[0][w])  # 标准化
-            elif w in models[1]:
+            elif w in models[1]:  # 英文词向量
                 vector += preprocessing.scale(models[1][w])  # 标准化
             else:
                 for wi in w:
-                    if wi in models[-1]:
+                    if wi in models[-1]:  #增加一个模型是字母向量
                         vector += preprocessing.scale(models[-1][wi])  # 标准化
     # vector = preprocessing.scale(vector)
     vector = matutils.unitvec(array(vector))  # 单位圆化：模为1
