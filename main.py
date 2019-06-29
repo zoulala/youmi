@@ -21,8 +21,9 @@ if __name__=="__main__":
     # load word2vec modle...
     model_zh = load_word2vec_model('models/wiki.zh.word_200v.model')
     model_en = load_word2vec_model('models/wiki.en.word_200v.model')
-    model_cha = load_word2vec_model('models/wiki.en.char_200v.model')
-    models = [model_zh, model_en, model_cha]
+    # model_cha = load_word2vec_model('models/wiki.en.char_200v.model')
+    # models = [model_zh, model_en, model_cha]
+    models = [model_zh, model_en]
     model_size = 200
 
     responses = get_libs('data/tianlong_libs.xlsx')
